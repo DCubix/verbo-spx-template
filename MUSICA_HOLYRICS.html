@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Música - Holyrics</title>
+
+    <script type="text/javascript" src="js/anime.umd.min.js"></script>
+    <script type="text/javascript" src="js/spx_interface.js"></script>
+    <script type="text/javascript" src="js/holyrics.js"></script>
+    <script type="text/javascript" src="js/utils.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <style>
+        .SPXWindow {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: absolute;
+        }
+
+        #gfx {
+            opacity: 0;
+            z-index: 10;
+            position: relative;
+            bottom: 10vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+        }
+
+        #lyrics-wrapper {
+            text-align: center;
+            max-width: 80vw;
+        }
+
+        #lyrics-text {
+            opacity: 0;
+            font-size: 1.8vw;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #ffffff;
+            white-space: pre-line;
+            text-shadow: 0 0 3vh rgba(0, 0, 0, 1.0),
+                         0 0 1vh rgba(0, 0, 0, 0.8);
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        let pollTimer = null;
+        let animating = false;
+
+        // ── Polling logic ──
+        async function fetchHolyrics() {
+            const data = await holyricsFetchMusic({
+                host: getFieldValue('holyrics_ip'),
+                port: getFieldValue('holyrics_port')
+            });
+            if (data) {
+                applyText('#lyrics-text', data.text);
+            }
+        }
+
+        // ── IN animation ──
+        function runAnimationIN() {
+            if (animating) return;
+            animating = true;
+
+            anime.createTimeline({
+                easing: 'easeOutQuad',
+                duration: 800,
+                onComplete: function () { animating = false; }
+            })
+            .add('#gfx', {
+                opacity: [0, 1],
+                easing: 'linear',
+                duration: 200
+            }, 0)
+            .add('#lyrics-text', {
+                opacity: [0, 1],
+                translateY: ['20%', '0%'],
+                duration: 600
+            }, 100);
+        }
+
+        // ── OUT animation ──
+        function runAnimationOUT() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+
+            if (animating) return;
+            animating = true;
+
+            anime.createTimeline({
+                easing: 'easeInQuad',
+                duration: 600,
+                onComplete: function () { animating = false; }
+            })
+            .add('#lyrics-text', {
+                opacity: [1, 0],
+                translateY: ['0%', '20%'],
+                duration: 400
+            }, 0)
+            .add('#gfx', {
+                opacity: [1, 0],
+                easing: 'linear',
+                duration: 200
+            }, 350);
+        }
+
+        // ── SPX lifecycle hook ──
+        function runTemplateUpdate() {
+            const interval = 250; // default to 250ms
+
+            if (pollTimer) clearInterval(pollTimer);
+            fetchHolyrics();
+            pollTimer = setInterval(fetchHolyrics, interval);
+
+            setTimeout(runAnimationIN, 50);
+        }
+
+        // ── SPX Template Definition ──
+        window.SPXGCTemplateDefinition = {
+            description: "Música - Holyrics",
+            playserver: "OVERLAY",
+            playchannel: "1",
+            playlayer: "2",
+            webplayout: "1",
+            out: "manual",
+            dataformat: "json",
+            uicolor: "2",
+            DataFields: [
+                {
+                    field: "holyrics_ip",
+                    ftype: "textfield",
+                    title: "IP do Holyrics",
+                    value: "172.17.0.1"
+                },
+                {
+                    field: "holyrics_port",
+                    ftype: "textfield",
+                    title: "Porta do Holyrics",
+                    value: "8080"
+                }
+            ]
+        };
+
+        // window.addEventListener('load', function () {
+        //     runTemplateUpdate();
+        // });
+    </script>
+</head>
+<body>
+    <div class="SPXWindow">
+        <div id="gfx">
+            <div id="lyrics-wrapper">
+                <div id="lyrics-text">HÁ UMA DANÇA DE VITÓRIA EM MEUS PÉS
+HÁ UMA PODEROSA FÉ EM MINHA VOZ</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden data fields for SPX -->
+    <div class="hidden">
+        <div data-info="holyrics ip" id="holyrics_ip">172.17.0.1</div>
+        <div data-info="holyrics port" id="holyrics_port">8080</div>
+    </div>
+</body>
+</html>

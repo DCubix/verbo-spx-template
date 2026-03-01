@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSF - Dízimos e Ofertas</title>
+
+    <script type="text/javascript" src="js/anime.umd.min.js"></script>
+    <script type="text/javascript" src="js/spx_interface.js"></script>
+    <script type="text/javascript" src="js/utils.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <style>
+        .SPXWindow {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: absolute;
+        }
+
+        #gfx {
+            opacity: 0;
+            z-index: 10;
+            position: relative;
+            bottom: 6vh;
+            transform-origin: bottom center;
+            width: 72vw;
+            height: 38vh;
+            overflow: visible;
+        }
+
+        /* ── Card wrapper ── */
+        #card-wrapper {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 70%;
+            overflow: visible;
+        }
+
+        #card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            background: #2c2c2c;
+            overflow: hidden;
+            top: 7px;
+            left: 7px;
+            clip-path: inset(-5% 105% -5% -5%);
+            box-shadow: 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white;
+        }
+
+        #card-content {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            height: 100%;
+            padding: 2vh 2.5vw 2vh 22vw;
+            gap: 2vw;
+        }
+
+        /* ── QR Code ── */
+        #qr-section {
+            opacity: 0;
+            position: absolute;
+            left: 4vw;
+            top: 0;
+            bottom: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1vh;
+            padding-bottom: 1.5vh;
+        }
+
+        #qr-container {
+            width: min(14vw, 30vh);
+            aspect-ratio: 1 / 1;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8vw;
+            filter: drop-shadow(0.2em 0.2em 8px rgba(0, 0, 0, 0.3));
+        }
+
+        #qr-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        #qr-label {
+            font-size: 1.2vw;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        /* ── Info ── */
+        #info-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1.5vh;
+            flex: 1;
+            min-width: 0;
+        }
+
+        #header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2vh;
+        }
+
+        #title {
+            opacity: 0;
+            font-size: 2.8vw;
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        #subtitle {
+            opacity: 0;
+            font-size: 1.5vw;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.2;
+        }
+
+        .info-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6vh;
+        }
+
+        .info-row {
+            opacity: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.6vw;
+        }
+
+        .info-label {
+            font-size: 1vw;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(255, 255, 255, 0.4);
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .pix-label {
+            font-size: 1.8vw;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.7);
+            white-space: nowrap;
+            margin-right: 0.3vw;
+        }
+
+        .info-value {
+            font-size: 1.7vw;
+            font-weight: 600;
+            line-height: 1.2;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .info-value.pix-key {
+            font-size: 2vw;
+            font-weight: 700;
+        }
+
+        .bank-line {
+            font-size: 1.5vw;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.65);
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+
+        .bank-line .bullet {
+            display: inline-block;
+            margin: 0 0.5vw;
+            opacity: 0.4;
+        }
+    </style>
+
+    <script>
+        const clipFull = 'inset(-5% -5% -5% -5%)';
+        const clipNone = 'inset(-5% 105% -5% -5%)';
+
+        function runTemplateUpdate() {
+            e('pix_value').innerText = getFieldValue('pix_key_text');
+
+            const bank = getFieldValue('bank_text');
+            const agency = getFieldValue('agency_text');
+            const account = getFieldValue('account_text');
+            e('bank_line').innerHTML = bank
+                + '<span class="bullet">&bull;</span>AG.: ' + agency
+                + '<span class="bullet">&bull;</span>CC.: ' + account;
+
+            setTimeout(runAnimationIN, 50);
+        }
+
+        function runAnimationIN() {
+            const rows = document.querySelectorAll('.info-row');
+
+            let tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 2500
+            })
+
+            .add('#gfx', {
+                opacity: [0, 1],
+                easing: 'linear',
+                duration: 300
+            }, 50)
+
+            // Card: clip-path reveal
+            .add('#card', {
+                clipPath: [clipNone, clipFull],
+                duration: 1500
+            }, 50)
+
+            // QR section
+            .add('#qr-section', {
+                opacity: [0, 1],
+                translateY: ['-30%', '0%'],
+                easing: 'easeOutBack',
+                duration: 800
+            }, 500)
+
+            // Title
+            .add('#title', {
+                opacity: [0, 1],
+                translateX: ['-40%', '0%'],
+                easing: 'easeOutQuad',
+                duration: 600
+            }, 600)
+
+            // Subtitle
+            .add('#subtitle', {
+                opacity: [0, 1],
+                translateX: ['-40%', '0%'],
+                easing: 'easeOutQuad',
+                duration: 600
+            }, 700);
+
+            // Staggered info rows
+            rows.forEach((row, i) => {
+                tl.add(row, {
+                    opacity: [0, 1],
+                    translateX: ['-30%', '0%'],
+                    easing: 'easeOutQuad',
+                    duration: 550
+                }, 800 + i * 120);
+            });
+
+            // Raise card
+            tl.add('#card', {
+                left: ['7px', '0px'],
+                top: ['7px', '0px'],
+                boxShadow: [
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                ],
+                duration: 450
+            }, 1200);
+        }
+
+        function runAnimationOUT() {
+            const rows = document.querySelectorAll('.info-row');
+            const rowCount = rows.length;
+            const stagger = 80;
+
+            let tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 2000
+            });
+
+            // QR out
+            tl.add('#qr-section', {
+                opacity: [1, 0],
+                scale: [1, 0.8],
+                translateY: ['0%', '-15%'],
+                easing: 'easeInQuad',
+                duration: 500
+            }, 0);
+
+            // Rows out (reverse)
+            rows.forEach((row, i) => {
+                tl.add(row, {
+                    opacity: [1, 0],
+                    translateX: ['0%', '30%'],
+                    easing: 'easeInQuad',
+                    duration: 350
+                }, (rowCount - 1 - i) * stagger);
+            });
+
+            const textStart = rowCount * stagger;
+
+            tl.add('#subtitle', {
+                opacity: [1, 0],
+                translateX: ['0%', '30%'],
+                easing: 'easeInQuad',
+                duration: 350
+            }, textStart)
+
+            .add('#title', {
+                opacity: [1, 0],
+                translateX: ['0%', '30%'],
+                easing: 'easeInQuad',
+                duration: 350
+            }, textStart + stagger)
+
+            // Unraise card
+            .add('#card', {
+                left: ['0px', '7px'],
+                top: ['0px', '7px'],
+                boxShadow: [
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                ],
+                duration: 450
+            }, textStart + stagger + 100)
+
+            // Unreveal card
+            .add('#card', {
+                clipPath: [clipFull, clipNone],
+                duration: 800
+            }, textStart + stagger + 500)
+
+            // Fade out
+            .add('#gfx', {
+                opacity: [1, 0],
+                easing: 'linear',
+                duration: 200
+            }, textStart + stagger + 650);
+        }
+
+        window.SPXGCTemplateDefinition = {
+            description: "JSF - Dízimos e Ofertas",
+            playserver: "OVERLAY",
+            playchannel: "1",
+            playlayer: "1",
+            webplayout: "1",
+            out: "manual",
+            dataformat: "json",
+            uicolor: "2",
+            DataFields: [
+                {
+                    field: "pix_key_text",
+                    ftype: "textfield",
+                    title: "Chave Pix",
+                    value: "00.000.000/0001-00"
+                },
+                { ftype: "divider" },
+                {
+                    field: "bank_text",
+                    ftype: "textfield",
+                    title: "Banco",
+                    value: "Banco do Brasil"
+                },
+                {
+                    field: "agency_text",
+                    ftype: "textfield",
+                    title: "Agência",
+                    value: "0000-0"
+                },
+                {
+                    field: "account_text",
+                    ftype: "textfield",
+                    title: "Conta",
+                    value: "00000-0"
+                }
+            ]
+        };
+
+        // window.addEventListener('load', () => {
+        //     runTemplateUpdate();
+        //     setTimeout(() => {
+        //         runAnimationOUT();
+        //     }, 8000);
+        // });
+    </script>
+</head>
+<body>
+    <div class="SPXWindow">
+        <div id="gfx">
+            <div id="qr-section">
+                <div id="qr-container">
+                    <img id="qrcode" src="assets/qr.png" alt="QR Code" />
+                </div>
+                <span id="qr-label">Escaneie o QR Code</span>
+            </div>
+
+            <div id="card-wrapper">
+                <div id="card">
+                    <div id="card-content">
+                        <div id="info-section">
+                            <div id="header">
+                                <span id="title">Dízimos &amp; Ofertas</span>
+                                <span id="subtitle">Semeie Nesta Visão</span>
+                            </div>
+
+                            <div class="info-group">
+                                <div class="info-row">
+                                    <span class="pix-label">PIX</span>
+                                    <span class="info-value pix-key" id="pix_value">00.000.000/0001-00</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="bank-line" id="bank_line">Banco do Brasil <span class="bullet">&bull;</span>AG.: 0000-0 <span class="bullet">&bull;</span>CC.: 00000-0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hidden">
+        <div data-info="pix key" id="pix_key_text">00.000.000/0001-00</div>
+        <div data-info="bank" id="bank_text">Banco do Brasil</div>
+        <div data-info="agency" id="agency_text">0000-0</div>
+        <div data-info="account" id="account_text">00000-0</div>
+    </div>
+</body>
+</html>

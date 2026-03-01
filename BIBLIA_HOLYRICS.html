@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bíblia - Holyrics</title>
+
+    <script type="text/javascript" src="js/anime.umd.min.js"></script>
+    <script type="text/javascript" src="js/spx_interface.js"></script>
+    <script type="text/javascript" src="js/holyrics.js"></script>
+    <script type="text/javascript" src="js/utils.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <style>
+        .SPXWindow {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: absolute;
+        }
+
+        #gfx {
+            opacity: 0;
+            z-index: 10;
+            position: relative;
+            bottom: 6vh;
+            transform-origin: bottom center;
+            width: 72vw;
+            overflow: visible;
+        }
+
+        #card {
+            position: relative;
+            width: 100%;
+            height: 20vh;
+            background-image: url('assets/bg.png');
+            background-size: 150%;
+            background-position: center;
+            border-radius: 2vw;
+            transform: skewX(-6deg);
+            overflow: hidden;
+        }
+
+        #card-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transform: skewX(6deg);
+            height: 100%;
+            padding: 2vh 3.5vw;
+            gap: 1vh;
+        }
+
+        /* ── Verse text ── */
+        #verse-text {
+            opacity: 0;
+            font-size: 2.2vw;
+            font-weight: 600;
+            line-height: 1.35;
+            color: rgba(0, 0, 0, 0.85);
+            white-space: normal;
+            word-break: break-word;
+            flex: 1;
+            overflow: hidden;
+            text-align: justify;
+        }
+
+        /* ── Reference (Book Chapter:Verse) ── */
+        #verse-ref {
+            opacity: 0;
+            font-size: 1.5vw;
+            font-weight: 700;
+            color: rgba(0, 0, 0, 0.50);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            line-height: 1.2;
+        }
+
+        /* ── Indicator icon ── */
+        #bible-icon {
+            opacity: 0;
+            position: absolute;
+            right: 3vw;
+            top: 50%;
+            transform: skewX(6deg) translateY(-50%);
+            width: 5vw;
+            height: 5vw;
+            color: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #bible-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+    </style>
+
+    <script>
+        // Clip paths: left-to-right reveal
+        const clipFull = 'inset(0% 0% 0% 0% round 1.5em)';
+        const clipNone = 'inset(0% 100% 0% 0% round 1.5em)';
+
+        let pollTimer = null;
+        let animating = false;
+
+        // ── Apply Bible text to DOM (with cross-fade) ──
+        let lastSignature = '';
+
+        function applyBibleText(data) {
+            const sig = data.reference + '|' + data.text;
+            if (sig === lastSignature) return;
+            lastSignature = sig;
+
+            const vText = document.querySelector('#verse-text');
+            const vRef = document.querySelector('#verse-ref');
+
+            const currentOpacity = parseFloat(getComputedStyle(vText).opacity);
+            if (currentOpacity === 0) {
+                vText.innerText = data.text;
+                vRef.innerText = data.reference;
+                autoFitFont();
+                return;
+            }
+
+            anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 500
+            })
+            .add('#verse-text', {
+                opacity: [1, 0],
+                translateY: ['0%', '-10%'],
+                duration: 200
+            }, 0)
+            .add('#verse-ref', {
+                opacity: [1, 0],
+                duration: 200
+            }, 0)
+            .add('#verse-text', {
+                opacity: [0, 1],
+                translateY: ['10%', '0%'],
+                duration: 250,
+                onBegin: function () {
+                    vText.innerText = data.text;
+                    vRef.innerText = data.reference;
+                    autoFitFont();
+                }
+            }, 230)
+            .add('#verse-ref', {
+                opacity: [0, 1],
+                duration: 250
+            }, 250);
+        }
+
+        // ── Polling logic ──
+        async function fetchHolyrics() {
+            const data = await holyricsFetchBible({
+                host: getFieldValue('holyrics_ip'),
+                port: getFieldValue('holyrics_port')
+            });
+            if (data) {
+                applyBibleText(data);
+            }
+        }
+
+        // ── Auto-fit font size for long text ──
+        const BASE_FONT_VW = 2.2;
+        const MIN_FONT_VW = 1.3;
+
+        function autoFitFont() {
+            const vText = e('verse-text');
+            const card = document.getElementById('card');
+            if (!vText || !card) return;
+
+            // Reset to base size first
+            vText.style.fontSize = BASE_FONT_VW + 'vw';
+
+            // Shrink until text fits within card height
+            let fontSize = BASE_FONT_VW;
+            const step = 0.1;
+
+            while (fontSize > MIN_FONT_VW && vText.scrollHeight > vText.clientHeight + 2) {
+                fontSize -= step;
+                vText.style.fontSize = fontSize + 'vw';
+            }
+        }
+
+        // ── IN animation (triggered by SPX play) ──
+        function runAnimationIN() {
+            if (animating) return;
+            animating = true;
+            isVisible = true;
+
+            const revealDuration = 1500;
+
+            const tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: revealDuration,
+                onComplete: function () { animating = false; }
+            })
+
+            // Fade in container
+            .add('#gfx', {
+                opacity: [0, 1],
+                easing: 'linear',
+                duration: 200
+            }, 0)
+
+            // Card clip-path reveal left → right
+            .add('#card', {
+                clipPath: [clipNone, clipFull],
+                duration: revealDuration
+            }, 0)
+
+            // Bible icon
+            .add('#bible-icon', {
+                opacity: [0, 1],
+                scale: [0.7, 1],
+                easing: 'easeOutBack',
+                duration: 600
+            }, revealDuration * 0.3)
+
+            // Verse text slides in
+            .add('#verse-text', {
+                opacity: [0, 1],
+                translateX: ['-30%', '0%'],
+                easing: 'easeOutQuad',
+                duration: 600
+            }, revealDuration * 0.5)
+
+            // Reference slides in
+            .add('#verse-ref', {
+                opacity: [0, 1],
+                translateX: ['-30%', '0%'],
+                easing: 'easeOutQuad',
+                duration: 600
+            }, revealDuration * 0.5 + 120);
+        }
+
+        // ── OUT animation (triggered by SPX stop) ──
+        function runAnimationOUT() {
+            // Stop polling
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+
+            if (animating) return;
+            animating = true;
+
+            const tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 1200,
+                onComplete: function () {
+                    animating = false;
+                }
+            })
+
+            // Text out
+            .add('#verse-ref', {
+                opacity: [1, 0],
+                translateX: ['0%', '30%'],
+                easing: 'easeInQuad',
+                duration: 350
+            }, 0)
+
+            .add('#verse-text', {
+                opacity: [1, 0],
+                translateX: ['0%', '30%'],
+                easing: 'easeInQuad',
+                duration: 350
+            }, 80)
+
+            .add('#bible-icon', {
+                opacity: [1, 0],
+                scale: [1, 0.7],
+                easing: 'easeInQuad',
+                duration: 300
+            }, 100)
+
+            // Card clip collapse right → left
+            .add('#card', {
+                clipPath: [clipFull, clipNone],
+                duration: 900
+            }, 250)
+
+            // Final fade
+            .add('#gfx', {
+                opacity: [1, 0],
+                easing: 'linear',
+                duration: 200
+            }, 950);
+        }
+
+        // ── SPX lifecycle hook ──
+        function runTemplateUpdate() {
+            const interval = 250;
+
+            if (pollTimer) clearInterval(pollTimer);
+            fetchHolyrics();
+            pollTimer = startPolling(fetchHolyrics, interval);
+
+            setTimeout(runAnimationIN, 50);
+        }
+
+        // ── SPX Template Definition ──
+        window.SPXGCTemplateDefinition = {
+            description: "Bíblia - Holyrics",
+            playserver: "OVERLAY",
+            playchannel: "1",
+            playlayer: "1",
+            webplayout: "1",
+            out: "manual",
+            dataformat: "json",
+            uicolor: "3",
+            DataFields: [
+                {
+                    field: "holyrics_ip",
+                    ftype: "textfield",
+                    title: "IP do Holyrics",
+                    value: "172.17.0.1"
+                },
+                {
+                    field: "holyrics_port",
+                    ftype: "textfield",
+                    title: "Porta do Holyrics",
+                    value: "8080"
+                }
+            ]
+        };
+
+        // window.addEventListener('load', function () {
+        //     runTemplateUpdate();
+        // });
+    </script>
+</head>
+<body>
+    <div class="SPXWindow">
+        <div id="gfx">
+            <div id="card">
+                <div id="card-content">
+                    <span id="verse-text">Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna.</span>
+                    <span id="verse-ref">João 3:16</span>
+                </div>
+                <div id="bible-icon">
+                    <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 22h15v-2H6.012C5.55 19.988 5 19.805 5 19s.55-.988 1.012-1H21V4a2 2 0 0 0-2-2H6c-1.206 0-3 .799-3 3v14c0 2.201 1.794 3 3 3zM8 7h3V5h2v2h3v2h-3v6h-2V9H8V7z"/></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden data fields for SPX -->
+    <div class="hidden">
+        <div data-info="holyrics ip" id="holyrics_ip">172.17.0.1</div>
+        <div data-info="holyrics port" id="holyrics_port">8080</div>
+    </div>
+</body>
+</html>
