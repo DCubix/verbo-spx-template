@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSF - QR Right</title>
+
+    <script type="text/javascript" src="js/anime.umd.min.js"></script>
+    <script type="text/javascript" src="js/spx_interface.js"></script>
+    <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src="js/qrcode.min.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <style>
+        .SPXWindow {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            position: absolute;
+        }
+
+        #gfx {
+            opacity: 0;
+            z-index: 10;
+            position: relative;
+            bottom: 8vh;
+            right: 8vw;
+            transform-origin: bottom right;
+            height: 13vh;
+        }
+
+        /* ── Image wrapper ── */
+        #image-wrapper {
+            position: relative;
+            right: -1.5em;
+            top: -5em;
+            width: 13vw;
+            height: 19vh;
+            z-index: 11;
+            overflow: visible;
+        }
+
+        #image {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #2c2c2c;
+            overflow: hidden;
+            z-index: 1;
+            top: 7px;
+            left: 7px;
+            clip-path: inset(-5% -5% -5% 105%);
+            box-shadow: 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white;
+        }
+
+        #image > * {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transform: scale(0.8);
+        }
+
+        /* ── Card wrapper ── */
+        #card-wrapper {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+        }
+
+        #card {
+            position: relative;
+            z-index: 1;
+            background: #2c2c2c;
+            height: 100%;
+            padding-left: 2vw;
+            padding-right: 14vw;
+            padding-top: 1.2vh;
+            padding-bottom: 1.2vh;
+            top: 7px;
+            left: 7px;
+            box-shadow: 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white;
+            overflow: hidden;
+        }
+
+        #card-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            height: 100%;
+        }
+
+        #title {
+            opacity: 0;
+            font-size: 2.2vw;
+            font-weight: 700;
+            line-height: 1.1;
+            text-align: right;
+            color: #ffffff;
+        }
+
+        #subtitle {
+            opacity: 0;
+            font-size: 1.4vw;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.65);
+            line-height: 1.2;
+            text-align: right;
+        }
+    </style>
+
+    <script>
+        const clipFull = 'inset(-5% -5% -5% -5%)';
+        const clipNone = 'inset(-5% -5% -5% 105%)';
+
+        function runTemplateUpdate() {
+            e('title').innerText = getFieldValue('title_text');
+            e('subtitle').innerText = getFieldValue('subtitle_text');
+
+            const qrCode = new QRCode(e('image'), {
+                text: getFieldValue('qr_text'),
+                width: 512,
+                height: 512,
+                colorDark: "#ffffff",
+                colorLight: "#2c2c2c",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            setTimeout(runAnimationIN, 50);
+        }
+
+        function runAnimationIN() {
+            let tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 2200
+            })
+
+            .add('#gfx', {
+                opacity: [0, 1],
+                easing: 'linear',
+                duration: 300
+            }, 50)
+
+            // Card: clip-path reveal (right to left)
+            .add('#card', {
+                clipPath: [clipNone, clipFull],
+                duration: 1500
+            }, 50)
+
+            // Title
+            .add('#title', {
+                translateX: ['100%', '0%'],
+                opacity: [0, 1],
+                duration: 800
+            }, 400)
+
+            // Subtitle
+            .add('#subtitle', {
+                translateX: ['100%', '0%'],
+                opacity: [0, 1],
+                duration: 800
+            }, 450)
+
+            // Raise card
+            .add('#card', {
+                left: ['7px', '0px'],
+                top: ['7px', '0px'],
+                boxShadow: [
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                ],
+                duration: 450
+            }, 1200)
+
+            // Reveal image
+            .add('#image', {
+                clipPath: [clipNone, clipFull],
+                duration: 800
+            }, 400)
+
+            // Raise image
+            .add('#image', {
+                left: ['7px', '0px'],
+                top: ['7px', '0px'],
+                boxShadow: [
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                ],
+                duration: 450
+            }, 1400);
+        }
+
+        function runAnimationOUT() {
+            let tl = anime.createTimeline({
+                easing: 'easeInOutQuad',
+                duration: 1800
+            })
+
+            // Unraise image
+            .add('#image', {
+                left: ['0px', '7px'],
+                top: ['0px', '7px'],
+                boxShadow: [
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                ],
+                duration: 450
+            }, 50)
+
+            // Unreveal image
+            .add('#image', {
+                clipPath: [clipFull, clipNone],
+                duration: 800
+            }, 400)
+
+            // Unraise card
+            .add('#card', {
+                left: ['0px', '7px'],
+                top: ['0px', '7px'],
+                boxShadow: [
+                    '1px 1px white, 2px 2px white, 3px 3px white, 4px 4px white, 5px 5px white, 6px 6px white, 7px 7px white',
+                    '0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white, 0px 0px white',
+                ],
+                duration: 450
+            }, 500)
+
+            // Unreveal card
+            .add('#card', {
+                clipPath: [clipFull, clipNone],
+                duration: 800
+            }, 900)
+
+            // Fade out
+            .add('#gfx', {
+                opacity: [1, 0],
+                easing: 'linear',
+                duration: 200
+            }, 1050);
+        }
+
+        window.SPXGCTemplateDefinition = {
+            description: "JSF - QR Code (Right)",
+            playserver: "OVERLAY",
+            playchannel: "1",
+            playlayer: "1",
+            webplayout: "1",
+            out: "manual",
+            dataformat: "json",
+            uicolor: "1",
+            DataFields: [
+                // QR Code
+                {
+                    field: "qr_text",
+                    ftype: "textfield",
+                    title: "Texto do QR Code",
+                    value: ""
+                },
+                { ftype: "divider" },
+                // Título
+                {
+                    field: "title_text",
+                    ftype: "textfield",
+                    title: "Texto do Título",
+                    value: ""
+                },
+                // Subtítulo
+                {
+                    field: "subtitle_text",
+                    ftype: "textfield",
+                    title: "Texto do Subtítulo",
+                    value: ""
+                }
+            ]
+        };
+
+        // window.addEventListener('load', () => {
+        //     runTemplateUpdate();
+        //     setTimeout(() => {
+        //         runAnimationOUT();
+        //     }, 5000);
+        // });
+    </script>
+</head>
+<body>
+    <div class="SPXWindow">
+        <div id="gfx">
+            <div id="image-wrapper">
+                <div id="image">
+                </div>
+            </div>
+            <div id="card-wrapper">
+                <div id="card">
+                    <div id="card-content">
+                        <span id="title">CARD TITLE</span>
+                        <span id="subtitle">CARD SUBTITLE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hidden">
+        <div data-info="qr code text" id="qr_text">QR Code Texto</div>
+        <div data-info="title text" id="title_text">Titulo do Card</div>
+        <div data-info="subtitle text" id="subtitle_text">Subtitulo mais longo do card</div>
+    </div>
+</body>
+</html>
