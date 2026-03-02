@@ -59,7 +59,7 @@
                 port: getFieldValue('holyrics_port')
             });
             if (data) {
-                applyText('#lyrics-text', data.text);
+                applyText('#lyrics-text', data.text.toUpperCase());
             }
         }
 
